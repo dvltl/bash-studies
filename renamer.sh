@@ -19,7 +19,12 @@ directory=$PWD
 
 for file in $directory/*
 do
-	mv $file ${file//$to_cut/""}
+	if [ $3 ]
+	then
+		mv $file ${file//$to_cut/$3}
+	else
+		mv $file ${file//$to_cut/""}
+	fi
 done
 
 #And yeah, I know that technically this isn't renaming...
