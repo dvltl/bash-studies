@@ -1,6 +1,6 @@
 #!bin/bash
 
-#Usage: bash name_cutter.sh <object_location> <what_to_cut>
+#Usage: bash name_cutter.sh <object_location> <what_to_replace> <with_what>
 
 #If the name of a file didn't contain the substring you wanted to cut
 #its name wouldn't be changed 
