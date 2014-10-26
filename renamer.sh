@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 #Usage: bash name_cutter.sh <object_location> <what_to_replace> <with_what>
 
