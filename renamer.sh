@@ -25,6 +25,5 @@ do
 	else
 		mv $file ${file//$to_cut/""}
 	fi
+	directory=$PWD
 done
-
-#And yeah, I know that technically this isn't renaming...
