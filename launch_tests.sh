@@ -14,12 +14,13 @@ cleanUp="-clean <output_location> - deletes the output location"
 defaultCheckerLoc="	default <cpachecker_location> 		= ../cpachecker"
 defaultTestsLoc="	default <tests_location> 		= ./"
 defaultOutputDir="	default <checker_output_location> 	= /dev/null (no output)"
+defaultException="	default <expected_exception>		= Exception"
 
 function help {
 	echo ""
 	echo "Options (one at a time) :"
 
-	for option in "$help", "$runTests", "$defaultCheckerLoc", "$defaultTestsLoc", "$defaultOutputDir", "$cleanUp"
+	for option in "$help", "$runTests", "$defaultCheckerLoc", "$defaultTestsLoc", "$defaultOutputDir", "$defaultException", "$cleanUp"
 	do
 		echo "$option"
 	done	
