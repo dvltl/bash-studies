@@ -146,7 +146,7 @@ function run {
 
 case "$1" in
 	"-runTests")
-		run "$2" "$3" "$4"
+		run "$2" "$3" "$4" "$5"
 		;;
 	"-clean")
 		clean "$2"
