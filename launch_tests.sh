@@ -1,6 +1,4 @@
 #	Script for running a bunch of tests via CPAchecker
-#	For now it works only with hardcoded names of tests
-#	But maybe someday i will improve it
 
 #	Run options are : 
 #	-help - prints help
