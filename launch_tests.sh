@@ -5,7 +5,7 @@
 #	-runTests - runs tests in specific location with cpachecker 
 #	-clean - cleans the output directory if such is provided
 
-runTests="-runTests <cpachecker_location> <tests_location> <checker_output_location> <expected_exception_if_any> - runs tests"
+runTests="-runTests <expected_exception_if_any> <cpachecker_location> <tests_location> <checker_output_location> - runs tests"
 help="-help - this help message"
 cleanUp="-clean <output_location> - deletes the output location"
 
@@ -42,39 +42,40 @@ function run {
 	echo ""
 	echo "Running tests"
 	echo ""
-
+	
 	if [ $1 ]
 	then
-		cpachecker_prefix=$1
+		exceptionType=$1
+	else
+		exceptionType="Exception"
+	fi
+
+	if [ $2 ]
+	then
+		cpachecker_prefix=$2
 	else
 		cpachecker_prefix="../cpachecker"
 	fi
 
 	echo "cpachecker_location = $cpachecker_prefix"
 
-	if [ $2 ]
+	if [ $3 ]
 	then
-		tests_prefix=$2
+		tests_prefix=$3
 	else
 		tests_prefix="./"
 	fi
 
 	echo "tests_location = $tests_prefix"
 
-	if [ $3 ]
-	then
-		output_dir=$3
-	else
-		output_dir="/dev/null"
-	fi
-
 	if [ $4 ]
 	then
-		exceptionType=$4
+		output_dir=$4
+		outputOption="-setprop output.disable=false -outputpath $output_dir" 
 	else
-		exceptionType="Exception"
+		output_dir="/dev/null"
+		outputOption=""
 	fi
-
 
 	echo "output_dir = $output_dir"
 	echo ""
@@ -89,16 +90,18 @@ function run {
 	if [ ${file: (-2)} = ".c" ]
 	then
 		verificationNeeded=true
+		entry="main"
 	fi
 
 	if [ ${file: (-4)} = ".o.i" ]
 	then
 		verificationNeeded=true
+		entry="ldv_main0_sequence_infinite_withcheck_stateful"
 	fi
 
 	if "$verificationNeeded" = "true"	
 	then	
-		$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties -setprop log.consoleLevel=ALL $tests_prefix/$file -entryfunction main -spec $cpachecker_prefix/config/specification/sv-comp.spc  -setprop cpa.predicate.solver=SMTInterpol -setprop output.disable=false -outputpath $output_dir >$tests_prefix/"log$i.log" 2>&1
+		$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties -setprop log.consoleLevel=ALL $tests_prefix/$file -entryfunction $entry -spec $cpachecker_prefix/config/specification/sv-comp.spc  -setprop cpa.predicate.solver=SMTInterpol $outputOption >$tests_prefix/"log$i.log" 2>&1
 
 		if ls $file | grep "_exception" >/dev/null
 		then
@@ -130,6 +133,9 @@ function run {
 					else
 						echo "FALSE_TEST failed..."
 					fi
+				else
+					echo "$i test name: $file, test type: UNKNOWN_TEST"
+					echo "UNKNOWN_TEST cleared!"
 				fi
 			fi
 		fi
