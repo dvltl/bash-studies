@@ -9,3 +9,5 @@ I'm quite new to writing scripts in bash, so if you know some material that is w
 If you intend to use launch_tests.sh please note, that it expects entry functions of the files to be:
 - 'main' for '.c' files
 - 'ldv_main0_sequence_infinite_withcheck_stateful' for '.o.i' files
+
+UPD: No longer relevant. You can now specify your entrypoints with options '-entry_c' and '-entry_o_i'
