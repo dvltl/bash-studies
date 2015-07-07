@@ -1,34 +1,49 @@
+#!/bin/bash
+
 #	Script for running a bunch of tests via CPAchecker
 
-#	Run options are : 
+#	Run options are :
 #	-help - prints help
-#	-runTests - runs tests in specific location with cpachecker 
+#	-runTests - runs tests in specific location with cpachecker
 #	-clean - cleans the output directory if such is provided
 
-runTests="-runTests <expected_exception_if_any> <cpachecker_location> <tests_location> <checker_output_location> - runs tests"
+runTests="-runTests [ options ] - runs tests"
+options="OPTIONS:
+	-spec=<specification_class>
+	-entry_c=<entrypoint_c>
+	-entry_o_i=<entrypoint_o_i>
+	-exception=<expected_exception>
+	-checker_loc=<cpachecker_location>
+   	-tests_loc=<tests_location>
+   	-output=<checker_output_location>"
 help="-help - this help message"
 cleanUp="-clean <output_location> - deletes the output location"
 
-defaultCheckerLoc="	default <cpachecker_location> 		= ../cpachecker"
-defaultTestsLoc="	default <tests_location> 		= ./"
-defaultOutputDir="	default <checker_output_location> 	= /dev/null (no output)"
-defaultException="	default <expected_exception>		= Exception"
+defaults="DEFAULT VALUES:
+	default <specification_class>		= sv-comp
+	default <entrypoint>			= main for '.c' files and ldv_main0_sequence_infinite_withcheck_stateful for '.o.i' files
+	default <cpachecker_location>		= ../cpachecker
+	default <tests_location>		= ./
+	default <checker_output_location>	= /dev/null (no output)
+	default <expected_exception>		= Exception"
 
 function help {
 	echo ""
 	echo "Options (one at a time) :"
+	echo ""
 
-	for option in "$help", "$runTests", "$defaultCheckerLoc", "$defaultTestsLoc", "$defaultOutputDir", "$defaultException", "$cleanUp"
+	for option in "$help", "$runTests", "$options", "$defaults", "$cleanUp"
 	do
 		echo "$option"
-	done	
+		echo ""
+	done
 	echo ""
 }
 
 function clean {
-	if [ $1 ] 
+	if [ $1 ]
 	then
-		echo "Deleting catalog $1"	
+		echo "Deleting catalog $1"
 		rm -rf $1
 		echo "Done!"
 	else
@@ -42,78 +57,126 @@ function run {
 	echo ""
 	echo "Running tests"
 	echo ""
-	
-	if [ $1 ]
-	then
-		exceptionType=$1
-	else
-		exceptionType="Exception"
-	fi
 
-	if [ $2 ]
-	then
-		cpachecker_prefix=$2
-	else
-		cpachecker_prefix="../cpachecker"
-	fi
+	exception_type_set=0
+	cpachecker_prefix_set=0
+	tests_prefix_set=0
+	entrypoint_c_set=0
+	entrypoint_o_i_set=0
+	specification_class_set=0
+	output_dir_set=0
 
+	entry_c="main"
+	entry_o_i="ldv_main0_sequence_infinite_withcheck_stateful"
+	exception_type="Exception"
+	cpachecker_prefix="../cpachecker"
+	tests_prefix="./"
+	output_dir="/dev/null"
+	output_option=""
+	specification_class="sv-comp"
+
+	readonly sep="="
+
+	for arg in $1 $2 $3 $4 $5 $6
+	do
+		tuple=( ${arg//$sep/ } )
+		case ${tuple[0]} in
+			"-spec")
+				if [ "$specification_class_set" = "0"  ]
+				then
+					specification_class_set=1
+					specification_class=${tuple[1]}
+				fi
+				;;
+			"-entry_c")
+				if [ "$entrypoint_c_set" = "0" ]
+				then
+					entrypoint_c_set=1
+					entry_c=${tuple[1]}
+				fi
+				;;
+			"-entry_o_i")
+				if [ "$entrypoint_o_i_set" = "0" ]
+				then
+					entrypoint_o_i_set=1
+					entry_o_i=${tuple[1]}
+				fi
+				;;
+			"-checker_loc")
+				if [ "$cpachecker_prefix_set" = "0" ]
+				then
+					cpachecker_prefix_set=1
+					cpachecker_prefix=${tuple[1]}
+				fi
+				;;
+			"-tests_loc")
+				if [ "$tests_prefix_set" = "0" ]
+				then
+					tests_prefix_set=1
+					tests_prefix=${tuple[1]}
+				fi
+				;;
+			"-output")
+				if [ "$output_dir_set" = "0" ]
+				then
+					output_dir_set=1
+					output_dir=${tuple[1]}
+				fi
+				;;
+			"-exception")
+				if [ "$exception_type_set" = "0" ]
+				then
+					exception_type_set=1
+					exception_type=${tuple[1]}
+				fi
+				;;
+		esac
+	done
+
+	echo "specification_class = $specification_class"
+	echo "entry_c = $entry_c"
+	echo "entry_o_i = $entry_o_i"
+	echo "expected_exception = $exception_type"
 	echo "cpachecker_location = $cpachecker_prefix"
-
-	if [ $3 ]
-	then
-		tests_prefix=$3
-	else
-		tests_prefix="./"
-	fi
-
 	echo "tests_location = $tests_prefix"
-
-	if [ $4 ]
-	then
-		output_dir=$4
-		outputOption="-setprop output.disable=false -outputpath $output_dir" 
-	else
-		output_dir="/dev/null"
-		outputOption=""
-	fi
-
 	echo "output_dir = $output_dir"
 	echo ""
 
+
 	i=0
 
-	for file in $tests_prefix/* 
+	for file in $tests_prefix/*
 	do
-	
-	verificationNeeded=false
+
+	verification_needed=false
 
 	if [ ${file: (-2)} = ".c" ]
 	then
-		verificationNeeded=true
-		entry="main"
+		verification_needed=true
+		entry=$entry_c
 	fi
 
 	if [ ${file: (-4)} = ".o.i" ]
 	then
-		verificationNeeded=true
-		entry="ldv_main0_sequence_infinite_withcheck_stateful"
+		verification_needed=true
+		entry=$entry_o_i
 	fi
 
-	if "$verificationNeeded" = "true"	
-	then	
-		$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties -setprop log.consoleLevel=ALL $tests_prefix/$file -entryfunction $entry -spec $cpachecker_prefix/config/specification/sv-comp.spc  -setprop cpa.predicate.solver=SMTInterpol $outputOption >$tests_prefix/"log$i.log" 2>&1
+	if [ "$verification_needed" = "true" ]
+	then
+		$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties -setprop log.consoleLevel=ALL $tests_prefix/$file -entryfunction $entry -spec $cpachecker_prefix/config/specification/$specification_class.spc  -setprop cpa.predicate.solver=SMTInterpol $output_option >$tests_prefix/"log$i.log" 2>&1
 
 		if ls $file | grep "_exception" >/dev/null
 		then
-			echo "$i test name: $file, test type: FAIL_TEST, expected exception: $exceptionType"
-			if cat $tests_prefix/"log$i.log" | grep "$exceptionType" >/dev/null
+			echo "$i test name: $file, test type: FAIL_TEST, expected exception: $exception_type"
+			if cat $tests_prefix/"log$i.log" | grep "$exception_type" >/dev/null
 			then
 				echo "FAIL_TEST cleared!"
 			else
-				echo "FAIL_TEST failed (no exception or not $exceptionType )"
+				echo "FAIL_TEST failed (no exception or not $exception_type )"
 			fi
 
-		else 
+		else
 			if ls $file | grep "_true" >/dev/null
 			then
 				echo "$i test name: $file, test type: TRUE_TEST, expected result: TRUE"
@@ -123,7 +186,7 @@ function run {
 				else
 					echo "TRUE_TEST failed..."
 				fi
-			else 
+			else
 				if ls $file | grep "_false" >/dev/null
 				then
 					echo "$i test name: $file, test type: FALSE_TEST, expected result: FALSE"
@@ -145,14 +208,14 @@ function run {
 
 	done
 
-	echo ""	
+	echo ""
 	echo "All done!"
 	echo ""
 }
 
 case "$1" in
 	"-runTests")
-		run "$2" "$3" "$4" "$5"
+		run "$2" "$3" "$4" "$5" "$6" "$7"
 		;;
 	"-clean")
 		clean "$2"
