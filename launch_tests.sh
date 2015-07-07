@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #	Script for running a bunch of tests via CPAchecker
 
 #	Run options are :
@@ -5,7 +7,6 @@
 #	-runTests - runs tests in specific location with cpachecker
 #	-clean - cleans the output directory if such is provided
 
-# TODO implement this kind of option specification
 runTests="-runTests [ options ] - runs tests"
 options="OPTIONS:
 	-spec=<specification_class>
@@ -13,7 +14,7 @@ options="OPTIONS:
 	-entry_o_i=<entrypoint_o_i>
 	-exception=<expected_exception>
 	-checker_loc=<cpachecker_location>
-   	-test_loc=<tests_location>
+   	-tests_loc=<tests_location>
    	-output=<checker_output_location>"
 help="-help - this help message"
 cleanUp="-clean <output_location> - deletes the output location"
@@ -57,7 +58,7 @@ function run {
 	echo "Running tests"
 	echo ""
 
-	exception_set=0
+	exception_type_set=0
 	cpachecker_prefix_set=0
 	tests_prefix_set=0
 	entrypoint_c_set=0
@@ -67,104 +68,75 @@ function run {
 
 	entry_c="main"
 	entry_o_i="ldv_main0_sequence_infinite_withcheck_stateful"
-	exceptionType="Exception"
+	exception_type="Exception"
 	cpachecker_prefix="../cpachecker"
 	tests_prefix="./"
 	output_dir="/dev/null"
-	outputOption=""
+	output_option=""
 	specification_class="sv-comp"
 
-	if [ $1 ]
-	then
-		case "$1" in
-		"-entry_c")
-			entry_c=$1
-			entrypoint_c_set=1
-			;;
-		"-entry_o_i")
-			entry_o_i=$1
-			entrypoint_o_i_set=1
-			;;
-		"-spec")
-			specification_class=$1
-			specification_class_set=1
-			;;
-		"-exception")
-			exceptionType=$1
-			exception_set=1
-			;;
-		"-checker_loc")
-			cpachecker_prefix=$1
-			cpachecker_prefix_set=1
-			;;
-		"-tests_loc")
-			tests_prefix=$1
-			tests_prefix_set=1
-			;;
-		"-output")
-			output_dir=$1
-			outputOption="-setprop output.disable=false -outputpath $output_dir"
-			output_dir_set=1
-			;;
+	readonly sep="="
+
+	for arg in $1 $2 $3 $4 $5 $6
+	do
+		tuple=( ${arg//$sep/ } )
+		case ${tuple[0]} in
+			"-spec")
+				if [ "$specification_class_set" = "0"  ]
+				then
+					specification_class_set=1
+					specification_class=${tuple[1]}
+				fi
+				;;
+			"-entry_c")
+				if [ "$entrypoint_c_set" = "0" ]
+				then
+					entrypoint_c_set=1
+					entry_c=${tuple[1]}
+				fi
+				;;
+			"-entry_o_i")
+				if [ "$entrypoint_o_i_set" = "0" ]
+				then
+					entrypoint_o_i_set=1
+					entry_o_i=${tuple[1]}
+				fi
+				;;
+			"-checker_loc")
+				if [ "$cpachecker_prefix_set" = "0" ]
+				then
+					cpachecker_prefix_set=1
+					cpachecker_prefix=${tuple[1]}
+				fi
+				;;
+			"-tests_loc")
+				if [ "$tests_prefix_set" = "0" ]
+				then
+					tests_prefix_set=1
+					tests_prefix=${tuple[1]}
+				fi
+				;;
+			"-output")
+				if [ "$output_dir_set" = "0" ]
+				then
+					output_dir_set=1
+					output_dir=${tuple[1]}
+				fi
+				;;
+			"-exception")
+				if [ "$exception_type_set" = "0" ]
+				then
+					exception_type_set=1
+					exception_type=${tuple[1]}
+				fi
+				;;
 		esac
-	fi
+	done
 
-	if [ $2 ]
-	then
-		case "$2" in
-		"-entry_c")
-			if $enrypoint_c_set == 0
-			then
-				entrypoint_c_set=1
-				entry_c=$2
-			fi
-			;;
-		"-entry_o_i")
-			if $entrypoint_o_i_set == 0
-			then
-				entrypoint_o_i_set=1
-				entry_o_i=$2
-			fi
-			;;
-		"-spec")
-			if $specification_class_set == 0
-			then
-				specification_class_set=1
-				specification_class=$2
-			fi
-			;;
-		"-exception")
-			if $exception_set == 0
-			then
-				exceptionType=$2
-				exception_set=1
-			fi
-			;;
-		"-output")
-			if $output_dir_set == 0
-			then
-				output_dir=$2
-				outputOption="-setprop output.disable=false -outputpath $output_dir"
-				output_dir_set=1
-			fi
-			;;
-		"-tests_loc")
-			if $tests_prefix_set == 0
-			then
-				tests_prefix=$2
-				tests_prefix_set=1
-			fi
-			;;
-		"-checker_loc")
-			if $cpachecker_prefix_set == 0
-			then
-				cpachecker_prefix=$2
-				cpachecker_prefix_set=1
-			fi
-		esac
-	fi
-
-
+	echo "specification_class = $specification_class"
+	echo "entry_c = $entry_c"
+	echo "entry_o_i = $entry_o_i"
+	echo "expected_exception = $exception_type"
 	echo "cpachecker_location = $cpachecker_prefix"
 	echo "tests_location = $tests_prefix"
 	echo "output_dir = $output_dir"
@@ -176,32 +148,32 @@ function run {
 	for file in $tests_prefix/*
 	do
 
-	verificationNeeded=false
+	verification_needed=false
 
 	if [ ${file: (-2)} = ".c" ]
 	then
-		verificationNeeded=true
-		entry="main"
+		verification_needed=true
+		entry=$entry_c
 	fi
 
 	if [ ${file: (-4)} = ".o.i" ]
 	then
-		verificationNeeded=true
-		entry="ldv_main0_sequence_infinite_withcheck_stateful"
+		verification_needed=true
+		entry=$entry_o_i
 	fi
 
-	if [ "$verificationNeeded" = "true" ]
+	if [ "$verification_needed" = "true" ]
 	then
-		$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties -setprop log.consoleLevel=ALL $tests_prefix/$file -entryfunction $entry -spec $cpachecker_prefix/config/specification/$specification_class.spc  -setprop cpa.predicate.solver=SMTInterpol $outputOption >$tests_prefix/"log$i.log" 2>&1
+		$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties -setprop log.consoleLevel=ALL $tests_prefix/$file -entryfunction $entry -spec $cpachecker_prefix/config/specification/$specification_class.spc  -setprop cpa.predicate.solver=SMTInterpol $output_option >$tests_prefix/"log$i.log" 2>&1
 
 		if ls $file | grep "_exception" >/dev/null
 		then
-			echo "$i test name: $file, test type: FAIL_TEST, expected exception: $exceptionType"
-			if cat $tests_prefix/"log$i.log" | grep "$exceptionType" >/dev/null
+			echo "$i test name: $file, test type: FAIL_TEST, expected exception: $exception_type"
+			if cat $tests_prefix/"log$i.log" | grep "$exception_type" >/dev/null
 			then
 				echo "FAIL_TEST cleared!"
 			else
-				echo "FAIL_TEST failed (no exception or not $exceptionType )"
+				echo "FAIL_TEST failed (no exception or not $exception_type )"
 			fi
 
 		else
@@ -214,7 +186,7 @@ function run {
 				else
 					echo "TRUE_TEST failed..."
 				fi
-			else 
+			else
 				if ls $file | grep "_false" >/dev/null
 				then
 					echo "$i test name: $file, test type: FALSE_TEST, expected result: FALSE"
@@ -243,7 +215,7 @@ function run {
 
 case "$1" in
 	"-runTests")
-		run "$2" "$3" "$4" "$5"
+		run "$2" "$3" "$4" "$5" "$6" "$7"
 		;;
 	"-clean")
 		clean "$2"
