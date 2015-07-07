@@ -145,7 +145,7 @@ function run {
 
 	i=0
 
-	for file in $tests_prefix/*
+	for file in $tests_prefix*
 	do
 
 	verification_needed=false
@@ -164,7 +164,7 @@ function run {
 
 	if [ "$verification_needed" = "true" ]
 	then
-		$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties -setprop log.consoleLevel=ALL $tests_prefix/$file -entryfunction $entry -spec $cpachecker_prefix/config/specification/$specification_class.spc  -setprop cpa.predicate.solver=SMTInterpol $output_option >$tests_prefix/"log$i.log" 2>&1
+		$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties -setprop log.consoleLevel=ALL $file -entryfunction $entry -spec $cpachecker_prefix/config/specification/$specification_class.spc  -setprop cpa.predicate.solver=SMTInterpol $output_option >$tests_prefix/"log$i.log" 2>&1
 
 		if ls $file | grep "_exception" >/dev/null
 		then
