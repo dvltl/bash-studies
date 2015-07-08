@@ -9,30 +9,36 @@
 
 runTests="-runTests [ options ] - runs tests"
 options="OPTIONS:
-	-spec=<specification_class>
-	-entry_c=<entrypoint_c>
-	-entry_o_i=<entrypoint_o_i>
-	-exception=<expected_exception>
-	-checker_loc=<cpachecker_location>
-   	-tests_loc=<tests_location>
-   	-output=<checker_output_location>"
+	-chunk=<chunk_flag>			- set true if you want to check all the files as one big file
+	-chunk_type=<chunk_type>		- set type of the files that you want to 'merge' in CPAchecker
+	-spec=<specification_class>		- which specification will be used (you can find them in /path/to/CPAchecker/config/specification). Enter name without .spc
+	-entry_c=<entrypoint_c>			- entrypoint for '.c' files
+	-entry_o_i=<entrypoint_o_i>		- entrypoint for '.o.i' files
+	-exception=<expected_exception>		- expected exception during tests
+	-checker_loc=<cpachecker_location>	- path to your CPAchecker (full or relative)
+   	-tests_loc=<tests_location>		- path to the directory where your tests are
+   	-output=<checker_output_location>	- desired more specific output location
+	-heap=<heap_size>			- part of RAM that will be availiable for CPAchecker"
 help="-help - this help message"
 cleanUp="-clean <output_location> - deletes the output location"
 
 defaults="DEFAULT VALUES:
+	default <chunk_flag>			= false
+	default <chunk_type>			= o.i
 	default <specification_class>		= sv-comp
 	default <entrypoint>			= main for '.c' files and ldv_main0_sequence_infinite_withcheck_stateful for '.o.i' files
 	default <cpachecker_location>		= ../cpachecker
 	default <tests_location>		= ./
-	default <checker_output_location>	= /dev/null (no output)
-	default <expected_exception>		= Exception"
+	default <checker_output_location>	= no output
+	default <expected_exception>		= Exception
+	default <heap_size>			= CPAchecker's default heap size"
 
 function help {
 	echo ""
 	echo "Options (one at a time) :"
 	echo ""
 
-	for option in "$help", "$runTests", "$options", "$defaults", "$cleanUp"
+	for option in "$help" "$runTests" "$options" "$defaults" "$cleanUp"
 	do
 		echo "$option"
 		echo ""
@@ -58,6 +64,7 @@ function run {
 	echo "Running tests"
 	echo ""
 
+	chunk_flag_set=0
 	exception_type_set=0
 	cpachecker_prefix_set=0
 	tests_prefix_set=0
@@ -65,7 +72,10 @@ function run {
 	entrypoint_o_i_set=0
 	specification_class_set=0
 	output_dir_set=0
+	heap_set=0
 
+	chunk_flag="false"
+	chunk_type="o.i"
 	entry_c="main"
 	entry_o_i="ldv_main0_sequence_infinite_withcheck_stateful"
 	exception_type="Exception"
@@ -74,10 +84,12 @@ function run {
 	output_dir="/dev/null"
 	output_option=""
 	specification_class="sv-comp"
+	heap=""
+	heap_size=""
 
 	readonly sep="="
 
-	for arg in $1 $2 $3 $4 $5 $6
+	for arg in $1 $2 $3 $4 $5 $6 $7 $8
 	do
 		tuple=( ${arg//$sep/ } )
 		case ${tuple[0]} in
@@ -130,9 +142,33 @@ function run {
 					exception_type=${tuple[1]}
 				fi
 				;;
+			"-chunk")
+				if [ "$chunk_flag_set" = "0" ]
+				then
+					chunk_flag_set=1
+					chunk_flag=${tuple[1]}
+				fi
+				;;
+			"-chunk_type")
+				if [ "$chunk_type_set" = "0" ]
+				then
+					chunk_type_set=1
+					chunk_type=${tuple[1]}
+				fi
+				;;
+			"-heap")
+				if [ "$heap_set" = 0 ]
+				then
+					heap_set=1
+					heap_size=${tuple[1]}
+					heap="-heap $heap_size"
+				fi
+				;;
 		esac
 	done
 
+	echo "chunk_flag = $chunk_flag"
+	echo "chunk_type = $chunk_type"
 	echo "specification_class = $specification_class"
 	echo "entry_c = $entry_c"
 	echo "entry_o_i = $entry_o_i"
@@ -143,70 +179,89 @@ function run {
 	echo ""
 
 
-	i=0
-
-	for file in $tests_prefix*
-	do
-
-	verification_needed=false
-
-	if [ ${file: (-2)} = ".c" ]
+	if [ "$chunk_flag" = "true" ] || [ "$chunk_flag" = "yes" ] || [ "$chunk_flag" = "y" ]
 	then
-		verification_needed=true
-		entry=$entry_c
-	fi
 
-	if [ ${file: (-4)} = ".o.i" ]
-	then
-		verification_needed=true
-		entry=$entry_o_i
-	fi
-
-	if [ "$verification_needed" = "true" ]
-	then
-		$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties -setprop log.consoleLevel=ALL $file -entryfunction $entry -spec $cpachecker_prefix/config/specification/$specification_class.spc  -setprop cpa.predicate.solver=SMTInterpol $output_option >$tests_prefix/"log$i.log" 2>&1
-
-		if ls $file | grep "_exception" >/dev/null
+		if [ "$chunk_type" = "c" ]
 		then
-			echo "$i test name: $file, test type: FAIL_TEST, expected exception: $exception_type"
-			if cat $tests_prefix/"log$i.log" | grep "$exception_type" >/dev/null
-			then
-				echo "FAIL_TEST cleared!"
-			else
-				echo "FAIL_TEST failed (no exception or not $exception_type )"
-			fi
-
+			entry=$entry_c
 		else
-			if ls $file | grep "_true" >/dev/null
+			if [ "$chunk_type" = "o.i" ]
 			then
-				echo "$i test name: $file, test type: TRUE_TEST, expected result: TRUE"
-				if cat $tests_prefix/"log$i.log" | grep "TRUE" >/dev/null
-				then
-					echo "TRUE_TEST cleared!"
-				else
-					echo "TRUE_TEST failed..."
-				fi
-			else
-				if ls $file | grep "_false" >/dev/null
-				then
-					echo "$i test name: $file, test type: FALSE_TEST, expected result: FALSE"
-					if cat $tests_prefix/"log$i.log" | grep "FALSE" >/dev/null
-					then
-						echo "FALSE_TEST cleared!"
-					else
-						echo "FALSE_TEST failed..."
-					fi
-				else
-					echo "$i test name: $file, test type: UNKNOWN_TEST"
-					echo "UNKNOWN_TEST cleared!"
-				fi
+				entry=$entry_o_i
 			fi
 		fi
 
-		(( ++i ))
-	fi
+		$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties $heap -setprop log.consoleLevel=ALL $tests_prefix*.$chunk_type -entryfunction $entry -spec $cpachecker_prefix/config/specification/$specification_class.spc  -setprop cpa.predicate.solver=SMTInterpol $output_option >$tests_prefix/"log$i.log" 2>&1
 
-	done
+	else
+
+		i=0
+
+		for file in $tests_prefix*
+		do
+
+		verification_needed=false
+
+		if [ ${file: (-2)} = ".c" ]
+		then
+			verification_needed=true
+			entry=$entry_c
+		fi
+
+		if [ ${file: (-4)} = ".o.i" ]
+		then
+			verification_needed=true
+			entry=$entry_o_i
+		fi
+
+		if [ "$verification_needed" = "true" ]
+		then
+			$cpachecker_prefix/scripts/cpa.sh -config $cpachecker_prefix/config/ldv.properties $heap -setprop log.consoleLevel=ALL $file -entryfunction $entry -spec $cpachecker_prefix/config/specification/$specification_class.spc  -setprop cpa.predicate.solver=SMTInterpol $output_option >$tests_prefix/"log$i.log" 2>&1
+
+			if ls $file | grep "_exception" >/dev/null
+			then
+				echo "$i test name: $file, test type: FAIL_TEST, expected exception: $exception_type"
+				if cat $tests_prefix/"log$i.log" | grep "$exception_type" >/dev/null
+				then
+					echo "FAIL_TEST cleared!"
+				else
+					echo "FAIL_TEST failed (no exception or not $exception_type )"
+				fi
+
+			else
+				if ls $file | grep "_true" >/dev/null
+				then
+					echo "$i test name: $file, test type: TRUE_TEST, expected result: TRUE"
+					if cat $tests_prefix/"log$i.log" | grep "TRUE" >/dev/null
+					then
+						echo "TRUE_TEST cleared!"
+					else
+						echo "TRUE_TEST failed..."
+					fi
+				else
+					if ls $file | grep "_false" >/dev/null
+					then
+						echo "$i test name: $file, test type: FALSE_TEST, expected result: FALSE"
+						if cat $tests_prefix/"log$i.log" | grep "FALSE" >/dev/null
+						then
+							echo "FALSE_TEST cleared!"
+						else
+							echo "FALSE_TEST failed..."
+						fi
+					else
+						echo "$i test name: $file, test type: UNKNOWN_TEST"
+						echo "UNKNOWN_TEST cleared!"
+					fi
+				fi
+			fi
+
+			(( ++i ))
+		fi
+
+		done
+
+	fi
 
 	echo ""
 	echo "All done!"
@@ -215,7 +270,7 @@ function run {
 
 case "$1" in
 	"-runTests")
-		run "$2" "$3" "$4" "$5" "$6" "$7"
+		run "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
 		;;
 	"-clean")
 		clean "$2"
