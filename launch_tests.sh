@@ -8,7 +8,7 @@
 #	-clean - cleans the output directory if such is provided
 
 runTests="-runTests [ options ] - runs tests"
-options="OPTIONS :
+options="OPTIONS (sadly, only 8 can be present for now) :
 	-chunk=<chunk_flag>			- set true if you want to check all the files as one big file
 	-chunk_type=<chunk_type>		- set type of the files that you want to 'merge' in CPAchecker
 	-spec=<specification_class>		- which specification will be used (you can find them in /path/to/CPAchecker/config/specification). Enter name without .spc
