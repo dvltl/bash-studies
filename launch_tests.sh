@@ -8,7 +8,7 @@
 #	-clean - cleans the output directory if such is provided
 
 runTests="-runTests [ options ] - runs tests"
-options="OPTIONS:
+options="OPTIONS :
 	-chunk=<chunk_flag>			- set true if you want to check all the files as one big file
 	-chunk_type=<chunk_type>		- set type of the files that you want to 'merge' in CPAchecker
 	-spec=<specification_class>		- which specification will be used (you can find them in /path/to/CPAchecker/config/specification). Enter name without .spc
@@ -22,7 +22,7 @@ options="OPTIONS:
 help="-help - this help message"
 cleanUp="-clean <output_location> - deletes the output location"
 
-defaults="DEFAULT VALUES:
+defaults="DEFAULT VALUES FOR -runTests OPTION :
 	default <chunk_flag>			= false
 	default <chunk_type>			= o.i
 	default <specification_class>		= sv-comp
@@ -35,10 +35,10 @@ defaults="DEFAULT VALUES:
 
 function help {
 	echo ""
-	echo "Options (one at a time) :"
+	echo "SCRIPT OPTIONS (one at a time) :"
 	echo ""
 
-	for option in "$help" "$runTests" "$options" "$defaults" "$cleanUp"
+	for option in "$help" "$runTests" "$cleanUp" "$options" "$defaults" 
 	do
 		echo "$option"
 		echo ""
